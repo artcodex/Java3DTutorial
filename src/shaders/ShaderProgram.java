@@ -20,6 +20,8 @@ import java.nio.file.Paths;
  * Created by avibrenner on 3/2/17.
  */
 public abstract class ShaderProgram {
+    protected static final int MAX_LIGHTS = 4;
+
     private int programID;
     private int vertexShaderID;
     private int fragmentShaderID;
@@ -121,7 +123,7 @@ public abstract class ShaderProgram {
 
             reader.close();
         } catch (IOException ex) {
-            System.err.println("Could not load file");
+            System.err.println("Could not load file: " + file);
             ex.printStackTrace();
             System.exit(-1);
         }
@@ -132,7 +134,7 @@ public abstract class ShaderProgram {
 
         if (GL20.glGetShaderi(shaderID, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE) {
             System.out.println(GL20.glGetShaderInfoLog(shaderID, 500));
-            System.err.println("Could not compile shader");
+            System.err.println("Could not compile shader: " + file);
             System.exit(-1);
         }
 

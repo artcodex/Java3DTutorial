@@ -9,10 +9,21 @@ import org.lwjgl.util.vector.Vector4f;
 public class Light {
     private Vector3f position;
     private Vector4f color;
+    private Vector3f attenuation = new Vector3f(1, 0, 0);
 
     public Light(Vector3f position, Vector4f color) {
         this.position = position;
         this.color = color;
+    }
+
+    public Light(Vector3f position, Vector4f color, Vector3f attenuation) {
+        this.position = position;
+        this.color = color;
+        this.attenuation = attenuation;
+    }
+
+    public Vector3f getAttenuation() {
+        return attenuation;
     }
 
     public Vector3f getPosition() {

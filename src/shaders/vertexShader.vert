@@ -5,14 +5,14 @@ in vec2 uv;
 in vec3 normal;
 out vec2 pass_uv;
 out vec3 surfaceNormal;
-out vec3 toLightSource;
+out vec3 toLightSource[4];
 out vec3 toCameraVector;
 out float visibility;
 
 uniform mat4 transformationMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
-uniform vec3 lightPosition;
+uniform vec3 lightPosition[4];
 
 uniform float useFakeLighting;
 
@@ -33,7 +33,10 @@ void main(void) {
     vec4 positionRelativeToCam = viewMatrix * worldPosition;
 	gl_Position = projectionMatrix * viewMatrix * worldPosition;
 	surfaceNormal = (transformationMatrix * vec4(actualNormal, 0.0)).xyz;
-	toLightSource = lightPosition - worldPosition.xyz;
+
+	for (int i=0; i<4; i++) {
+	    toLightSource[i] = lightPosition[i] - worldPosition.xyz;
+	}
 
 	//inverse of view matrix is camera position since view matrix calculates opposites to create illusion, then multiply by 4D vector
 	//to get vector of position
