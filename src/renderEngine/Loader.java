@@ -1,11 +1,8 @@
 package renderEngine;
 
-import Models.RawModel;
+import models.RawModel;
 import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.*;
 import org.newdawn.slick.opengl.Texture;
 import org.newdawn.slick.opengl.TextureLoader;
 
@@ -25,14 +22,23 @@ public class Loader {
     private List<Integer> vbos = new ArrayList<>();
     private List<Integer> textures = new ArrayList<>();
 
-    public RawModel loadToVAO(float[] positions, float[] uv, int[] indices) {
+    public RawModel loadToVAO(float[] positions, float[] uv, float[] normals, int[] indices) {
         int vaoID = createVAO();
         bindIndicesBuffer(indices);
         storeDataInAttributeList(0, 3, positions);
         storeDataInAttributeList(1, 2, uv);
+        storeDataInAttributeList(2, 3, normals);
         unbindVAO();
 
         return new RawModel(vaoID, indices.length);
+    }
+
+    public RawModel loadToVAO(float[] positions) {
+        int vaoID = createVAO();
+        storeDataInAttributeList(0, 2, positions);
+        unbindVAO();
+
+        return new RawModel(vaoID, positions.length / 2);
     }
 
     public int loadTexture(String fileName) {
@@ -41,6 +47,9 @@ public class Loader {
         try {
             //TODO: Write code with actual texture functions this is a helper
             texture = TextureLoader.getTexture("PNG", new FileInputStream("res/" + fileName + ".png"));
+            GL30.glGenerateMipmap(GL11.GL_TEXTURE_2D);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
+            GL11.glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, -0.4f);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
