@@ -12,7 +12,7 @@ out float visibility;
 uniform mat4 transformationMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
-uniform vec3 lightPosition;
+uniform vec3 lightPosition[4];
 
 const float density = 0.003;
 const float gradient = 1.5;

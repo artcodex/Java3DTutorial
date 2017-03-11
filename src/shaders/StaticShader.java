@@ -5,6 +5,7 @@ import entities.Light;
 import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
+import org.lwjgl.util.vector.Vector4f;
 import toolbox.Maths;
 
 import java.util.List;
@@ -28,6 +29,8 @@ public class StaticShader extends ShaderProgram {
     private int location_skyColor;
     private int location_xyOffset;
     private int location_numberOfRows;
+    private int location_useCellShading;
+    private int location_plane;
 
 
     public StaticShader() {
@@ -45,6 +48,8 @@ public class StaticShader extends ShaderProgram {
         location_skyColor = super.getUniformLocation("skyColor");
         location_xyOffset = super.getUniformLocation("xyOffset");
         location_numberOfRows = super.getUniformLocation("numberOfRows");
+        location_useCellShading = super.getUniformLocation("useCellShading");
+        location_plane = super.getUniformLocation("plane");
 
         //Fix this code to directly work with uniform arrays in one shot.
         location_lightPosition = new int[MAX_LIGHTS];
@@ -80,6 +85,10 @@ public class StaticShader extends ShaderProgram {
         super.loadMatrix(location_viewMatrix, viewMatrix);
     }
 
+    public void loadCullingPlane(Vector4f plane) {
+        super.loadVector(location_plane, plane);
+    }
+
     public void loadLights(List<Light> lights) {
         //TODO: Improve performance by only handling as many lights as exist in the shader code
         //and not go over blank lights
@@ -94,6 +103,10 @@ public class StaticShader extends ShaderProgram {
                 super.loadVector(location_lightAttenuation[i], new Vector3f(1,0,0));
             }
         }
+    }
+
+    public void loadUseCellShading(boolean useCellShading) {
+        super.loadBoolean(location_useCellShading, useCellShading);
     }
 
     public void loadShineVariables(float damper, float reflectivity) {

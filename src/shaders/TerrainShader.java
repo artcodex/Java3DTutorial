@@ -30,6 +30,7 @@ public class TerrainShader extends ShaderProgram {
     private int location_gTexture;
     private int location_bTexture;
     private int location_blendMapTexture;
+    private int location_useCellShading;
 
     public TerrainShader() {
         super(VERTEX_SHADER, FRAGMENT_SHADER);
@@ -48,6 +49,7 @@ public class TerrainShader extends ShaderProgram {
         location_gTexture = super.getUniformLocation("gTexture");
         location_bTexture = super.getUniformLocation("bTexture");
         location_blendMapTexture = super.getUniformLocation("blendTexture");
+        location_useCellShading = super.getUniformLocation("useCellShading");
 
         //Fix this code to directly work with uniform arrays in one shot.
         location_lightPosition = new int[MAX_LIGHTS];
@@ -59,6 +61,10 @@ public class TerrainShader extends ShaderProgram {
             location_lightColor[i] = super.getUniformLocation("lightColor["+ i + "]");
             location_lightAttenuation[i] = super.getUniformLocation("lightAttenuation["+ i + "]");
         }
+    }
+
+    public void loadUseCellShading(boolean useCellShading) {
+        super.loadBoolean(location_useCellShading, useCellShading);
     }
 
     public void connectTextureUnits() {

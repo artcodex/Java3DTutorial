@@ -8,7 +8,11 @@ import models.TexturedModel;
 import entities.Camera;
 import entities.Entity;
 import entities.Light;
+import org.lwjgl.Sys;
+import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
@@ -18,6 +22,12 @@ import terrain.Terrain;
 import textures.ModelTexture;
 import textures.TerrainTexture;
 import textures.TerrainTexturePack;
+import toolbox.MousePicker;
+import toolbox.SettingsHelper;
+import water.WaterFrameBuffers;
+import water.WaterRenderer;
+import water.WaterShader;
+import water.WaterTile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +57,7 @@ public class MainGameLoop {
         TerrainTexture rTexture = new TerrainTexture(loader.loadTexture("mud"));
         TerrainTexture gTexture = new TerrainTexture(loader.loadTexture("grassFlowers"));
         TerrainTexture bTexture = new TerrainTexture(loader.loadTexture("path"));
+        //TerrainTexture bTexture = new TerrainTexture(loader.loadTexture("pinkFlowers"));
 
         TerrainTexturePack texturePack = new TerrainTexturePack(backgroundTexture, rTexture, gTexture, bTexture);
         TerrainTexture blendMap = new TerrainTexture(loader.loadTexture("blendMap"));
@@ -54,7 +65,7 @@ public class MainGameLoop {
         Terrain terrain = new Terrain(-1,-1, loader, texturePack, blendMap, "heightmap");
         Terrain terrain2 = new Terrain(0,-1, loader, texturePack, blendMap, "heightmap");
 
-        MasterRenderer renderer = new MasterRenderer();
+        MasterRenderer renderer = new MasterRenderer(loader);
 
         /*List<Entity> entities = new ArrayList<>();
         Random random = new Random();
@@ -99,8 +110,17 @@ public class MainGameLoop {
         TexturedModel bunnyModel = new TexturedModel(OBJLoader.loadObjModel("person", loader),
                 new ModelTexture(loader.loadTexture("playerTexture")));
 
+        bunnyModel.getModelTexture().setShineDamper(10);
+        bunnyModel.getModelTexture().setReflectivity(1.0f);
+
         TexturedModel lamp = new TexturedModel(OBJLoader.loadObjModel("lamp", loader),
                 new ModelTexture(loader.loadTexture("lamp")));
+
+        TexturedModel bobbleTree = new TexturedModel(OBJLoader.loadObjModel("bobbleTree", loader),
+                new ModelTexture(loader.loadTexture("bobbleTree")));
+
+        TexturedModel toonRock = new TexturedModel(OBJLoader.loadObjModel("toonRocks", loader),
+                new ModelTexture(loader.loadTexture("toonRocks")));
 
         lamp.getModelTexture().setUseFakeLighting(true);
 
@@ -110,17 +130,21 @@ public class MainGameLoop {
         Player player = new Player(bunnyModel, new Vector3f(100,0,-150), 0,180,0,0.5f);
         Camera camera = new Camera(player);
 
-        Light light = new Light(new Vector3f(0,1000,-7000), new Vector4f(0.4f, 0.4f, 0.4f, 1f));
+        //Light light = new Light(new Vector3f(0,1000,-7000), new Vector4f(1f, 1f, 1f, 1f));
+        Light light = new Light(new Vector3f(0,1000,-7000), new Vector4f(0.2f, 0.2f, 0.2f, 1f));
         List<Light> lights = new ArrayList<>();
         lights.add(light);
         lights.add(new Light(new Vector3f(185,10,-293), new Vector4f(2,0,0,1), new Vector3f(1, 0.01f, 0.002f)));
         lights.add(new Light(new Vector3f(370,17,-300), new Vector4f(0,2,2,1), new Vector3f(1, 0.01f, 0.002f)));
-        lights.add(new Light(new Vector3f(293,7,-305), new Vector4f(2,2,0,1), new Vector3f(1, 0.01f, 0.002f)));
+        Light movableLight = new Light(new Vector3f(293,7,-305), new Vector4f(2,2,0,1), new Vector3f(1, 0.01f, 0.002f));
+        lights.add(movableLight);
 
         List<Entity> entities = new ArrayList<Entity>();
         entities.add(new Entity(lamp, new Vector3f(185,-4.7f,-293), 0, 0, 0, 1));
         entities.add(new Entity(lamp, new Vector3f(370,4.2f,-300), 0, 0, 0, 1));
-        entities.add(new Entity(lamp, new Vector3f(293,-6.8f,-305), 0, 0, 0, 1));
+        Entity movableLamp = new Entity(lamp, new Vector3f(293,-6.8f,-305), 0, 0, 0, 1);
+        entities.add(movableLamp);
+        entities.add(player);
 
         Random random = new Random();
         /*for(int i=0;i<500;i++){
@@ -130,10 +154,12 @@ public class MainGameLoop {
         for(int i=0;i<200;i++){
             entities.add(createEntity(random, terrain2, staticModel, 3, 0));
             entities.add(createEntity(random, terrain2, lowPolyTree, 0.5f, 0));
-            entities.add(createEntity(random, terrain2, pine, 1.0f, 0));
+            //entities.add(createEntity(random, terrain2, pine, 1.0f, 0));
+            entities.add(createEntity(random, terrain2, bobbleTree, 0.5f, 0));
+            entities.add(createEntity(random, terrain2, toonRock, 1.0f, 0));
             //entities.add(createEntity(random, terrain2, grass, 1));
             //entities.add(createEntity(random, terrain2, flower, 1));
-            entities.add(createEntity(random, terrain2, fern, 0.9f, random.nextInt(4)));
+            //entities.add(createEntity(random, terrain2, fern, 0.9f, random.nextInt(4)));
         }
 
         //entities.add(new Entity(box, new Vector3f(100, 0,-200),0,0,0,5));
@@ -148,56 +174,50 @@ public class MainGameLoop {
         guis.add(gui3);
 
         GuiRenderer guiRenderer = new GuiRenderer(loader);
+        MousePicker picker = new MousePicker(camera, renderer.getProjectionMatrix(), terrain2);
+        SettingsHelper settings = new SettingsHelper();
 
-        int frames =0;
-        long elapsed =0;
-        long seconds =0;
-        long last = System.currentTimeMillis();
+        //Setup whether to use cell Shading or not
+        MasterRenderer.setUseCellShading(false);
+        List<Terrain> terrains = new ArrayList<>();
+        terrains.add(terrain2);
+
+        WaterShader waterShader = new WaterShader();
+        WaterRenderer waterRenderer = new WaterRenderer(loader, waterShader, renderer.getProjectionMatrix());
+        List<WaterTile> waters = new ArrayList<>();
+        waters.add(new WaterTile(140,-175, 0));
+
+        WaterFrameBuffers fbos = new WaterFrameBuffers();
+        GuiTexture gui4 = new GuiTexture(fbos.getReflectionTexture(), new Vector2f(-0.5f, 0.5f), new Vector2f(0.25f, 0.25f));
+        guis.add(gui4);
+
         while(!Display.isCloseRequested()) {
-            //entity.increaseRotation(0.0f, 1f, 0.0f);
-            /*if (Mouse.isButtonDown(0) && Mouse.isInsideWindow()) {
-                int mouseX = Mouse.getX();
-                int mouseY = Mouse.getY();
-                int halfWidth = Display.getWidth() / 2;
-                int halfHeight = Display.getHeight() / 2;
-                float rotationY = ((mouseX - halfWidth) / (float) Display.getWidth()) * 100.0f;
-                float rotationX = ((mouseY - halfHeight) / (float) Display.getHeight()) * 100.0f;
-                entity.setRotY(rotationY * 8);
-                entity.setRotX(rotationX * 8);
-            }*/
-
-            elapsed += System.currentTimeMillis()-last;
-            last = System.currentTimeMillis();
-            frames++;
-
-            if (elapsed > 1000) {
-                elapsed = 0;
-                seconds++;
-            }
-
             player.move(terrain2);
             camera.move();
+            picker.update();
+            settings.update();
 
-            renderer.processEntity(player);
-            //renderer.processTerrain(terrain);
-            renderer.processTerrain(terrain2);
-            for (Entity entity: entities) {
-                //if (entity.getPosition().z >= camera.getPosition().z - camera.FAR_PLANE && entity.getPosition().z <= camera.getPosition().z) {
-                    renderer.processEntity(entity);
-                    //entity.increaseRotation(0.0f, 1f, 0.0f);
-                //}
+            Vector3f terrainPoint = picker.getCurrentTerrainPoint();
+            if (terrainPoint != null && Mouse.isButtonDown(0)) {
+                movableLamp.setPosition(terrainPoint);
+                movableLight.setPosition(new Vector3f(terrainPoint.x, terrainPoint.y+15, terrainPoint.z));
             }
 
-            if (seconds > 0) {
-                System.out.printf("\r");
-                System.out.printf("Framerate = %d", (long) (frames / seconds));
-            }
+            GL11.glEnable(GL30.GL_CLIP_DISTANCE0);
 
-            renderer.render(lights, camera);
+            fbos.bindReflectionFrameBuffer();
+            renderer.renderScene(entities, terrains, lights, camera, new Vector4f(0, -1, 0, 15));
+            fbos.unbindCurrentFrameBuffer();
+
+            renderer.renderScene(entities, terrains, lights, camera, new Vector4f(0, 1, 0, -5));
             guiRenderer.render(guis);
+            waterRenderer.render(waters, camera);
+
             DisplayManager.updateDisplay();
         }
 
+        fbos.cleanUp();
+        waterShader.cleanUp();
         guiRenderer.cleanUp();
         renderer.cleanUp();
         loader.cleanUp();

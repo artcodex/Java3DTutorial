@@ -9,5 +9,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="lwjgl2" level="project" />
     <orderEntry type="library" name="slick-util" level="project" />
+    <orderEntry type="library" name="PNGDecoder" level="project" />
   </component>
 </module>

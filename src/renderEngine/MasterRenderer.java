@@ -8,8 +8,10 @@ import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector3f;
+import org.lwjgl.util.vector.Vector4f;
 import shaders.StaticShader;
 import shaders.TerrainShader;
+import skybox.SkyboxRenderer;
 import terrain.Terrain;
 
 import java.util.ArrayList;
@@ -25,22 +27,33 @@ import static entities.Camera.NEAR_PLANE;
  * Created by abrenner on 3/7/17.
  */
 public class MasterRenderer {
+    private static boolean useCellShading = false;
     private StaticShader entityShader = new StaticShader();
     private TerrainShader terrainShader = new TerrainShader();
     private EntityRenderer entityRenderer;
     private TerrainRenderer terrainRenderer;
+    private SkyboxRenderer skyboxRenderer;
     private Matrix4f projectionMatrix;
 
-    private static final Vector3f skyColor = new Vector3f(0.5f, 0.5f, 0.5f);
+    private static final Vector3f skyColor = new Vector3f(0.61f, 0.66f, 0.71f);
 
     private Map<TexturedModel, List<Entity>> entities = new HashMap<>();
     private List<Terrain> terrains = new ArrayList<>();
 
-    public MasterRenderer() {
+    public MasterRenderer(Loader loader) {
         enableCulling();
         createProjectionMatrix();
         entityRenderer = new EntityRenderer(entityShader, projectionMatrix);
         terrainRenderer = new TerrainRenderer(terrainShader, projectionMatrix);
+        skyboxRenderer = new SkyboxRenderer(loader, projectionMatrix);;
+    }
+
+    public static boolean isUseCellShading() {
+        return useCellShading;
+    }
+
+    public static void setUseCellShading(boolean useCellShading) {
+        MasterRenderer.useCellShading = useCellShading;
     }
 
     public static void enableCulling() {
@@ -52,20 +65,40 @@ public class MasterRenderer {
         GL11.glDisable(GL11.GL_CULL_FACE);
     }
 
-    public void render(List<Light> lights, Camera camera) {
+    public Matrix4f getProjectionMatrix() {
+        return projectionMatrix;
+    }
+
+    public void renderScene(List<Entity> entities, List<Terrain> terrains, List<Light> lights, Camera camera, Vector4f clipPlane) {
+        for (Terrain terrain : terrains) {
+            processTerrain(terrain);
+        }
+
+        for (Entity entity : entities) {
+            processEntity(entity);
+        }
+
+        render(lights, camera, clipPlane);
+    }
+
+    public void render(List<Light> lights, Camera camera, Vector4f clipPlane) {
         prepare();
         entityShader.start();
+        entityShader.loadCullingPlane(clipPlane);
+        entityShader.loadUseCellShading(MasterRenderer.isUseCellShading());
         entityShader.loadSkyColor(skyColor);
         entityShader.loadLights(lights);
         entityShader.loadViewMatrix(camera);
         entityRenderer.render(entities);
         entityShader.stop();
         terrainShader.start();
+        terrainShader.loadUseCellShading(MasterRenderer.isUseCellShading());
         terrainShader.loadSkyColor(skyColor);
         terrainShader.loadLights(lights);
         terrainShader.loadViewMatrix(camera);
         terrainRenderer.render(terrains);
         terrainShader.stop();
+        skyboxRenderer.render(camera, skyColor.getX(), skyColor.getY(), skyColor.getZ());
         terrains.clear();
         entities.clear();
     }
